@@ -52,21 +52,23 @@ public class Ball extends Sprite implements ICollisionCallback{
 		}
 		else if(data.compareTo("ground") == 0){ //Hit the ground ball stops
 			//To-DO game over stuff
-			velocity.x = 0;
-			velocity.y = 0;
+			velocity.y = -1 * velocity.y;
+			//velocity.x = 0;
+			//velocity.y = 0;
 			return false;
 		}
 		else{//If it hits anything else figure out bounce based of off angles, still needs a little work in some special case...
-			this.angleVector = new Vector2(pTargetShape.getX()-this.getX(), pTargetShape.getY()-this.getY());
+			this.angleVector = new Vector2((pTargetShape.getX()-pTargetShape.getWidth()/2)-(this.getX()-this.getWidth()/2), (pTargetShape.getY()-pTargetShape.getHeight()/2)-(this.getY()-this.getHeight()/2));
 			double angle = Math.atan(angleVector.y/angleVector.x);
-			if(angle > Math.PI/4 | angle < -(Math.PI/4)){
+			if(angle > (Math.PI/1) | angle < -(Math.PI/1)){
 				velocity.y = -1 * velocity.y;
 			}
 			else{
 				velocity.x = -1 * velocity.x;
 			}
 			Debug.d("Angle Vector: " + angleVector + " Angle: " + angle*(180/Math.PI));
-			return false;
+			Debug.d("Upper Cutoff: " + (Math.PI/1)*(180/Math.PI) + " Lower Cutoff" + -(Math.PI/1)*(180/Math.PI));
+			return true;
 		}
 	}
 }

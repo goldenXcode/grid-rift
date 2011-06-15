@@ -5,8 +5,6 @@ import java.util.ArrayList;
 import org.anddev.andengine.engine.Engine;
 import org.anddev.andengine.engine.camera.Camera;
 import org.anddev.andengine.engine.handler.collision.CollisionHandler;
-import org.anddev.andengine.engine.handler.timer.ITimerCallback;
-import org.anddev.andengine.engine.handler.timer.TimerHandler;
 import org.anddev.andengine.engine.options.EngineOptions;
 import org.anddev.andengine.engine.options.EngineOptions.ScreenOrientation;
 import org.anddev.andengine.engine.options.resolutionpolicy.RatioResolutionPolicy;
@@ -18,24 +16,13 @@ import org.anddev.andengine.entity.shape.IShape;
 import org.anddev.andengine.entity.shape.Shape;
 import org.anddev.andengine.entity.sprite.Sprite;
 import org.anddev.andengine.entity.util.FPSLogger;
-import org.anddev.andengine.extension.physics.box2d.PhysicsConnector;
-import org.anddev.andengine.extension.physics.box2d.PhysicsFactory;
-import org.anddev.andengine.extension.physics.box2d.PhysicsWorld;
 import org.anddev.andengine.input.touch.TouchEvent;
 import org.anddev.andengine.opengl.texture.Texture;
 import org.anddev.andengine.opengl.texture.region.TextureRegion;
 import org.anddev.andengine.opengl.texture.region.TextureRegionFactory;
 import org.anddev.andengine.ui.activity.BaseGameActivity;
-import org.anddev.andengine.util.Debug;
 
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.physics.box2d.Body;
-import com.badlogic.gdx.physics.box2d.BodyDef;
-import com.badlogic.gdx.physics.box2d.Contact;
-import com.badlogic.gdx.physics.box2d.ContactListener;
-import com.badlogic.gdx.physics.box2d.FixtureDef;
-import com.badlogic.gdx.physics.box2d.MassData;
-import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 
 /**
  * @author Isaiah Walker
@@ -89,7 +76,7 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
         	//Loads the necessary files for the game to use
         	this.mTexture = new Texture(128,128);
         	this.mPlatform = TextureRegionFactory.createFromAsset(this.mTexture, this, "brick_tile.png",0,0);
-        	this.mBall = TextureRegionFactory.createFromAsset(this.mTexture, this, "Lemon.png",0,32);
+        	this.mBall = TextureRegionFactory.createFromAsset(this.mTexture, this, "Small Lemon.png",0,32);
         	this.mEngine.getTextureManager().loadTexture(this.mTexture);
         }
 
@@ -133,7 +120,7 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
     		//Setting Up Ball
     		lemon = new Ball(370, 250, this.mBall);
     		scene.getFirstChild().attachChild(lemon);
-    		lemon.setVelocity(new Vector2(-5, 5));
+    		lemon.setVelocity(new Vector2(-2, 2));
     		
     		this.mEngine.registerUpdateHandler(new CollisionHandler(lemon, lemon, platform_sprite));
     		this.mEngine.registerUpdateHandler(new CollisionHandler(lemon, lemon, walls));
@@ -166,7 +153,7 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
         // ===========================================================
 		
 		public void movePlatform(float x){
-			platform_sprite.setPosition(x, platform_sprite.getY());
+			platform_sprite.setPosition(x - platform_sprite.getWidth()/2, platform_sprite.getY());
 			
 		}
 		
