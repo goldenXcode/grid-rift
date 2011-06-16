@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import org.anddev.andengine.engine.Engine;
 import org.anddev.andengine.engine.camera.Camera;
 import org.anddev.andengine.engine.handler.collision.CollisionHandler;
+import org.anddev.andengine.engine.handler.timer.ITimerCallback;
+import org.anddev.andengine.engine.handler.timer.TimerHandler;
 import org.anddev.andengine.engine.options.EngineOptions;
 import org.anddev.andengine.engine.options.EngineOptions.ScreenOrientation;
 import org.anddev.andengine.engine.options.resolutionpolicy.RatioResolutionPolicy;
@@ -15,12 +17,19 @@ import org.anddev.andengine.entity.scene.background.ColorBackground;
 import org.anddev.andengine.entity.shape.IShape;
 import org.anddev.andengine.entity.shape.Shape;
 import org.anddev.andengine.entity.sprite.Sprite;
+import org.anddev.andengine.entity.text.ChangeableText;
 import org.anddev.andengine.entity.util.FPSLogger;
 import org.anddev.andengine.input.touch.TouchEvent;
+import org.anddev.andengine.opengl.font.Font;
+import org.anddev.andengine.opengl.font.FontFactory;
 import org.anddev.andengine.opengl.texture.Texture;
+import org.anddev.andengine.opengl.texture.TextureOptions;
 import org.anddev.andengine.opengl.texture.region.TextureRegion;
 import org.anddev.andengine.opengl.texture.region.TextureRegionFactory;
 import org.anddev.andengine.ui.activity.BaseGameActivity;
+import org.anddev.andengine.util.Debug;
+
+import android.graphics.Color;
 
 import com.badlogic.gdx.math.Vector2;
 
@@ -42,12 +51,15 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
         // ===========================================================
 
         private Texture mTexture;
+        private Texture fontTexture;
+        private Font font;
         private TextureRegion mPlatform;
         private TextureRegion mBall;
         private Ball lemon;
         private Sprite platform_sprite;
         private Camera mCamera;
-        private int ballCount;
+        //private int ballCount; to be implemented later
+        private int lives;
         private ArrayList<IShape> walls;
 
         // ===========================================================
@@ -74,10 +86,18 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
         @Override
         public void onLoadResources() {
         	//Loads the necessary files for the game to use
+        	//Sprite
         	this.mTexture = new Texture(128,128);
-        	this.mPlatform = TextureRegionFactory.createFromAsset(this.mTexture, this, "brick_tile.png",0,0);
-        	this.mBall = TextureRegionFactory.createFromAsset(this.mTexture, this, "Small Lemon.png",0,32);
+        	this.mPlatform = TextureRegionFactory.createFromAsset(this.mTexture, this, "PlatformSmall.png",0,0);
+        	this.mBall = TextureRegionFactory.createFromAsset(this.mTexture, this, "Lemon (2).png",0,30);
         	this.mEngine.getTextureManager().loadTexture(this.mTexture);
+        	
+        	//Fonts
+        	this.fontTexture = new Texture(512,512, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+        	this.font = FontFactory.createFromAsset(this.fontTexture, this, "Plok.ttf", 16, true, Color.WHITE);
+        	this.mEngine.getTextureManager().loadTexture(this.fontTexture);
+        	this.mEngine.getFontManager().loadFont(this.font);
+        	
         }
 
         @Override
@@ -85,6 +105,7 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
         	//What gets placed the game window 
         	final Scene scene = new Scene(1);
         	walls = new ArrayList<IShape>();
+        	lives = 3; 
         	
         	this.mEngine.registerUpdateHandler(new FPSLogger());
 
@@ -118,12 +139,26 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
     		scene.getFirstChild().attachChild(platform_sprite);
     		
     		//Setting Up Ball
-    		lemon = new Ball(370, 250, this.mBall);
+    		lemon = new Ball(370, 250, this.mBall, lives, platform_sprite);
     		scene.getFirstChild().attachChild(lemon);
-    		lemon.setVelocity(new Vector2(-2, 2));
+    		lemon.setVelocity(new Vector2(-8, 8));
     		
     		this.mEngine.registerUpdateHandler(new CollisionHandler(lemon, lemon, platform_sprite));
     		this.mEngine.registerUpdateHandler(new CollisionHandler(lemon, lemon, walls));
+    		
+    		final ChangeableText livesText = new ChangeableText(10f, 690f, font, "Lives: "+lives);
+    		scene.getFirstChild().attachChild(livesText);
+    		//Check the health of the ball 
+    		scene.registerUpdateHandler(new TimerHandler(0.1f, true, new ITimerCallback(){
+				@Override
+				public void onTimePassed(final TimerHandler pTimerHandler) {
+					lives = lemon.getLives();
+					livesText.setText("Lives: "+lives);
+					Debug.d("Lives = "+lives);
+				}
+    			
+    		}));
+
     		
             return scene;    
         }
@@ -162,3 +197,4 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
         // ===========================================================
 		
 }
+
