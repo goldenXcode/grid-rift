@@ -4,7 +4,6 @@ import org.anddev.andengine.engine.handler.collision.ICollisionCallback;
 import org.anddev.andengine.entity.shape.IShape;
 import org.anddev.andengine.entity.sprite.Sprite;
 import org.anddev.andengine.opengl.texture.region.TextureRegion;
-import org.anddev.andengine.util.Debug;
 
 import com.badlogic.gdx.math.Vector2;
 
@@ -13,22 +12,39 @@ public class Ball extends Sprite implements ICollisionCallback{
 	private Vector2 velocity;
 	private String data;
 	private Vector2 angleVector;
+	private boolean alive;
+	private boolean onPlatform;
+	private int lives;
 	
-	Ball(float x, float y, TextureRegion texture){
+	Ball(float x, float y, TextureRegion texture, int lives, Sprite platform){
 		super(x, y, texture);
-		velocity = new Vector2(0,0);
+		this.velocity = new Vector2(0,0);
+		this.alive = true;
+		this.lives = lives;
+		this.onPlatform = true;
+		this.setParent(platform);
 	}
 
-	public void setVelocity(Vector2 velocity) {
-		this.velocity = velocity;
-	}
-
-	public Vector2 getVelocity() {
-		return velocity;
+	public void move() {
+		if(onPlatform){
+			this.setPosition(this.getParent());
+		}
+		else if(alive){
+			this.setPosition(this.getX()+velocity.x, this.getY()+velocity.y);
+		}
+		else{
+			lives--;
+			
+			if(lives > 0){
+				this.alive = true;
+				this.reset();
+			}
+		}
 	}
 	
-	public void move(){
-		this.setPosition(this.getX()+velocity.x, this.getY()+velocity.y);
+	public void launch(){
+		this.onPlatform = false;
+		this.setVelocity(new Vector2(-8, 8));
 	}
 	
 	@Override
@@ -52,23 +68,44 @@ public class Ball extends Sprite implements ICollisionCallback{
 		}
 		else if(data.compareTo("ground") == 0){ //Hit the ground ball stops
 			//To-DO game over stuff
-			velocity.y = -1 * velocity.y;
-			//velocity.x = 0;
-			//velocity.y = 0;
+			this.alive = false;
 			return false;
 		}
-		else{//If it hits anything else figure out bounce based of off angles, still needs a little work in some special case...
-			this.angleVector = new Vector2((pTargetShape.getX()-pTargetShape.getWidth()/2)-(this.getX()-this.getWidth()/2), (pTargetShape.getY()-pTargetShape.getHeight()/2)-(this.getY()-this.getHeight()/2));
+		else if(data.compareTo("platform") == 0){//If it hits anything else figure out bounce based of off angles, still needs a little work in some special case...
+			float targetx = (pTargetShape.getX()-pTargetShape.getWidth()/2);
+			float targety = (pTargetShape.getY()-pTargetShape.getHeight()/2);
+			float ballx = (this.getX()-this.getWidth()/2);
+			float bally = (this.getY()-this.getHeight()/2);
+			this.angleVector = new Vector2((ballx-targetx),(bally-targety));
 			double angle = Math.atan(angleVector.y/angleVector.x);
-			if(angle > (Math.PI/1) | angle < -(Math.PI/1)){
-				velocity.y = -1 * velocity.y;
-			}
-			else{
+			if(angle > 0.245 | angle < -0.245){
 				velocity.x = -1 * velocity.x;
 			}
-			Debug.d("Angle Vector: " + angleVector + " Angle: " + angle*(180/Math.PI));
-			Debug.d("Upper Cutoff: " + (Math.PI/1)*(180/Math.PI) + " Lower Cutoff" + -(Math.PI/1)*(180/Math.PI));
+			else{
+				velocity.y = -1 * velocity.y;
+			}
+			//Debug.d("Angle Vector: " + angleVector + " Angle: " + angle*(180/Math.PI));
+			//Debug.d("Upper Cutoff: " + 0.245*(180/Math.PI) + " Lower Cutoff" + -0.245*(180/Math.PI));
 			return true;
 		}
+		
+		return false;
 	}
+
+	public void setLives(int lives) {
+		this.lives = lives;
+	}
+
+	public int getLives() {
+		return lives;
+	}
+	
+	public void setVelocity(Vector2 velocity) {
+		this.velocity = velocity;
+	}
+
+	public Vector2 getVelocity() {
+		return velocity;
+	}
+	
 }
