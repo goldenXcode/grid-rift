@@ -1,10 +1,12 @@
 package org.andeng.test;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 import org.anddev.andengine.engine.Engine;
 import org.anddev.andengine.engine.camera.Camera;
 import org.anddev.andengine.engine.handler.collision.CollisionHandler;
+import org.anddev.andengine.engine.handler.collision.ICollisionCallback;
 import org.anddev.andengine.engine.handler.timer.ITimerCallback;
 import org.anddev.andengine.engine.handler.timer.TimerHandler;
 import org.anddev.andengine.engine.options.EngineOptions;
@@ -13,7 +15,6 @@ import org.anddev.andengine.engine.options.resolutionpolicy.RatioResolutionPolic
 import org.anddev.andengine.entity.primitive.Rectangle;
 import org.anddev.andengine.entity.scene.Scene;
 import org.anddev.andengine.entity.scene.Scene.IOnSceneTouchListener;
-import org.anddev.andengine.entity.scene.background.ColorBackground;
 import org.anddev.andengine.entity.shape.IShape;
 import org.anddev.andengine.entity.shape.Shape;
 import org.anddev.andengine.entity.sprite.Sprite;
@@ -26,6 +27,7 @@ import org.anddev.andengine.opengl.texture.Texture;
 import org.anddev.andengine.opengl.texture.TextureOptions;
 import org.anddev.andengine.opengl.texture.region.TextureRegion;
 import org.anddev.andengine.opengl.texture.region.TextureRegionFactory;
+import org.anddev.andengine.opengl.texture.region.TiledTextureRegion;
 import org.anddev.andengine.ui.activity.BaseGameActivity;
 import org.anddev.andengine.util.Debug;
 
@@ -35,9 +37,9 @@ import com.badlogic.gdx.math.Vector2;
 
 /**
  * @author Isaiah Walker
- * Updated 6/12/2011
+ * Updated 6/23/2011
  */
-public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
+public class GridRift extends BaseGameActivity implements IOnSceneTouchListener, ICollisionCallback{
         // ===========================================================
         // Constants
         // ===========================================================
@@ -49,18 +51,35 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
         // ===========================================================
         // Fields
         // ===========================================================
-
+        
+        private Scene scene;
         private Texture mTexture;
+        private Texture mBackgroundTexture;
         private Texture fontTexture;
+        private ChangeableText livesText;
         private Font font;
         private TextureRegion mPlatform;
         private TextureRegion mBall;
+        private TextureRegion mBrick;
+        private TiledTextureRegion mLaser;
+        private TextureRegion mLifeUp;
+        private TextureRegion mDoubleLemon;
+        private TextureRegion mLaserUp;
+        private TextureRegion mJewel;
+        private TextureRegion mBackground;
         private Ball lemon;
-        private Sprite platform_sprite;
+        private Ball lemon2;
+        private Platform platform;
+        private Sprite brick;
         private Camera mCamera;
-        //private int ballCount; to be implemented later
+        private Jewel jewel1;
+        private Jewel jewel2;
+        private int ballCount;
         private int lives;
-        private ArrayList<IShape> walls;
+        private ArrayList<IShape> stuff;
+        //private ArrayList<IShape> bricks;
+        private ArrayList<IShape> powerUps;
+        private Random rng;
 
         // ===========================================================
         // Constructors
@@ -87,10 +106,21 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
         public void onLoadResources() {
         	//Loads the necessary files for the game to use
         	//Sprite
-        	this.mTexture = new Texture(128,128);
+        	this.mTexture = new Texture(512,256);
         	this.mPlatform = TextureRegionFactory.createFromAsset(this.mTexture, this, "PlatformSmall.png",0,0);
         	this.mBall = TextureRegionFactory.createFromAsset(this.mTexture, this, "Lemon (2).png",0,30);
+        	this.mBrick = TextureRegionFactory.createFromAsset(this.mTexture, this, "Brick.png",0,50);
+        	this.mLaser = TextureRegionFactory.createTiledFromAsset(this.mTexture, this, "LaserShotAni3.png",120,0,5,1);
+        	this.mLifeUp = TextureRegionFactory.createFromAsset(this.mTexture, this, "Lifeup.png",0,80);
+        	this.mDoubleLemon = TextureRegionFactory.createFromAsset(this.mTexture, this, "SecondBallPowerup.png",40,80);
+        	this.mLaserUp = TextureRegionFactory.createFromAsset(this.mTexture, this, "LaserPowerup.png",80,80);
+        	this.mJewel = TextureRegionFactory.createFromAsset(this.mTexture, this, "JewelLaser.png",120,80);
         	this.mEngine.getTextureManager().loadTexture(this.mTexture);
+        	
+        	//Background
+        	this.mBackgroundTexture = new Texture(512, 1024);
+        	this.mBackground = TextureRegionFactory.createFromAsset(this.mBackgroundTexture, this, "Background Swirly.png", 0, 0);
+        	this.mEngine.getTextureManager().loadTexture(this.mBackgroundTexture);
         	
         	//Fonts
         	this.fontTexture = new Texture(512,512, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
@@ -98,18 +128,24 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
         	this.mEngine.getTextureManager().loadTexture(this.fontTexture);
         	this.mEngine.getFontManager().loadFont(this.font);
         	
+        	//Random number Generator
+        	rng = new Random();
         }
 
         @Override
         public Scene onLoadScene() {
         	//What gets placed the game window 
-        	final Scene scene = new Scene(1);
-        	walls = new ArrayList<IShape>();
-        	lives = 3; 
+        	this.scene = new Scene(1);
+        	stuff = new ArrayList<IShape>();
+        	powerUps = new ArrayList<IShape>();
+        	lives = 3;
+        	ballCount = 1;
         	
         	this.mEngine.registerUpdateHandler(new FPSLogger());
 
-    		scene.setBackground(new ColorBackground(0, 0, 0));
+    		scene.setBackgroundEnabled(false);
+    		scene.getFirstChild().attachChild(new Sprite(0, 0, this.mBackground));
+    		
     		scene.setOnSceneTouchListener(this);
     		
     		//The walls of the game area
@@ -123,10 +159,10 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
     		right.setUserData(new String("right"));
     		
     		//Adding them to the wall collision list
-    		walls.add(ground);
-    		walls.add(roof);
-    		walls.add(left);
-    		walls.add(right);
+    		stuff.add(ground);
+    		stuff.add(roof);
+    		stuff.add(left);
+    		stuff.add(right);
     		
     		scene.getFirstChild().attachChild(ground);
     		scene.getFirstChild().attachChild(roof);
@@ -134,31 +170,63 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
     		scene.getFirstChild().attachChild(right);
     		
     		//Setting up Platform
-    		platform_sprite = new Sprite(240, PLATFORM_HEIGHT, this.mPlatform);
-    		platform_sprite.setUserData(new String("platform"));
-    		scene.getFirstChild().attachChild(platform_sprite);
+    		platform = new Platform(240, PLATFORM_HEIGHT, this.mPlatform);
+    		platform.setUserData(new String("platform"));
+    		scene.getFirstChild().attachChild(platform);
+    		
+    		//Add the sprite to the collision list
+    		stuff.add(platform);
     		
     		//Setting Up Ball
-    		lemon = new Ball(370, 250, this.mBall, lives, platform_sprite);
+    		lemon = new Ball(240, PLATFORM_HEIGHT, this.mBall, lives, platform);
+    		lemon.setUserData(new String("lemon"));
     		scene.getFirstChild().attachChild(lemon);
-    		lemon.setVelocity(new Vector2(-8, 8));
     		
-    		this.mEngine.registerUpdateHandler(new CollisionHandler(lemon, lemon, platform_sprite));
-    		this.mEngine.registerUpdateHandler(new CollisionHandler(lemon, lemon, walls));
+    		//Setting up brick
+    		brick = new Sprite(240, 400, this.mBrick);
+    		brick.setUserData(new String("brick"));
+    		scene.getFirstChild().attachChild(brick);
     		
-    		final ChangeableText livesText = new ChangeableText(10f, 690f, font, "Lives: "+lives);
+    		stuff.add(brick);
+    		
+    		this.mEngine.registerUpdateHandler(new CollisionHandler(this, lemon, stuff));
+    		//this.mEngine.registerUpdateHandler(new CollisionHandler(this, lemon, bricks));
+    		this.mEngine.registerUpdateHandler(new CollisionHandler(this, platform, powerUps));
+    		
+    		livesText = new ChangeableText(10f, 690f, font, "Lives: "+lives);
     		scene.getFirstChild().attachChild(livesText);
-    		//Check the health of the ball 
-    		scene.registerUpdateHandler(new TimerHandler(0.1f, true, new ITimerCallback(){
+    		//Change to spawning bricks if levels doesn't exist make random brick spawn
+    		//Laser Spawner
+    		scene.registerUpdateHandler(new TimerHandler(5.0f, true, new ITimerCallback(){
 				@Override
 				public void onTimePassed(final TimerHandler pTimerHandler) {
-					lives = lemon.getLives();
-					livesText.setText("Lives: "+lives);
-					Debug.d("Lives = "+lives);
+					if(platform.hasLaser()){
+						final Laser laser1 = new Laser(platform.getX()-5, platform.getY(), mLaser);
+						final Laser laser2 = new Laser(platform.getX()+platform.getWidth()+5, platform.getY(), mLaser);
+						laser1.animate(new long[] { 200, 200, 200 }, 1, 3, true);
+						laser2.animate(new long[] { 200, 200, 200 }, 1, 3, true);
+						laser1.setUserData(new String("laser"));
+						laser2.setUserData(new String("laser"));
+						scene.getFirstChild().attachChild(laser1);
+						scene.getFirstChild().attachChild(laser2);
+						GridRift.this.mEngine.registerUpdateHandler(new CollisionHandler(GridRift.this, laser1, stuff));
+						GridRift.this.mEngine.registerUpdateHandler(new CollisionHandler(GridRift.this, laser2, stuff));
+						platform.decreaseDuration();
+					}
+					if(!platform.hasLaser()){
+						if(jewel1 != null){
+							GridRift.this.runOnUpdateThread(new Runnable() {
+			                    @Override
+			                    public void run() {
+			                    	scene.getFirstChild().detachChild(jewel1);
+			                    	scene.getFirstChild().detachChild(jewel2);
+			                    }
+							});//End UpdateThread
+						}
+					}
 				}
     			
     		}));
-
     		
             return scene;    
         }
@@ -172,14 +240,23 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
 		public boolean onSceneTouchEvent(final Scene pScene,final TouchEvent pSceneTouchEvent) {
 		
 			if(pSceneTouchEvent.isActionDown()) {
-				this.movePlatform(pSceneTouchEvent.getX());
+				this.platform.setTargetX(pSceneTouchEvent.getX());
 				return true;
 			}
 			else if(pSceneTouchEvent.isActionMove()){
-				this.movePlatform(pSceneTouchEvent.getX());
+				this.platform.setTargetX(pSceneTouchEvent.getX());
 				return true;
 			}
-		
+			else if(pSceneTouchEvent.isActionUp()){
+				if(lemon.isOnPlatform()){
+					lemon.launch();
+				}
+				if(lemon2 != null){
+					if(lemon2.isOnPlatform()){
+						lemon2.launch();
+					}
+				}
+			}
 			return false;
 		}
 
@@ -188,8 +265,195 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener{
         // ===========================================================
 		
 		public void movePlatform(float x){
-			platform_sprite.setPosition(x - platform_sprite.getWidth()/2, platform_sprite.getY());
+			platform.setPosition(x - platform.getWidth()/2, platform.getY());
 			
+		}
+		
+		public void spawnPowerUp(float x, float y){
+			int type = rng.nextInt(3);
+			type = 1;
+			switch(type){
+				case 0:
+					final PowerUp life = new PowerUp(x, y, mLifeUp);
+					life.setUserData(new String("lifeUp"));
+					powerUps.add(life);
+					scene.getFirstChild().attachChild(life);
+					break;
+				case 1:
+					final PowerUp laser = new PowerUp(x, y, mLaserUp);
+					laser.setUserData(new String("laserUp"));
+					powerUps.add(laser);
+					scene.getFirstChild().attachChild(laser);
+					break;
+				case 2:
+					final PowerUp twoball = new PowerUp(x, y, mDoubleLemon);
+					twoball.setUserData(new String("ballUp"));
+					powerUps.add(twoball);
+					scene.getFirstChild().attachChild(twoball);
+					break;
+			}
+		}
+
+		@Override
+		public boolean onCollision(final IShape pCheckShape,final IShape pTargetShape) {
+			//Figure out what the ball collided with
+			//If it was a wall negate the correct direction
+			String check;
+			String target;
+			check = (String) pCheckShape.getUserData();
+			target = (String) pTargetShape.getUserData();
+			
+			if(check.compareTo("lemon") == 0 | check.compareTo("lemon2") == 0){//Ball Block
+				final Ball ball = (Ball) pCheckShape;
+				if(target.compareTo("left") == 0 | target.compareTo("right") == 0){
+					ball.xShift();
+					
+					return false;
+				}//End of left and right block
+				else if(target.compareTo("roof") == 0){
+					ball.yShift();
+					return false;
+				}//End of roof block
+				else if(target.compareTo("ground") == 0){ //Hit the ground ball stops
+					if(ballCount < 2){
+						ball.die();
+						lives = lemon.getLives();
+						livesText.setText("Lives: "+lives);
+					}
+					else{
+						ballCount--;
+						this.runOnUpdateThread(new Runnable() {
+		                    @Override
+		                    public void run() {
+		                    	scene.getFirstChild().detachChild(pCheckShape);
+		                    	GridRift.this.mEngine.unregisterUpdateHandler(new CollisionHandler(GridRift.this, ball, stuff));
+		                    }
+						});//End UpdateThread
+					}
+					if(lives == 0){ //Game over
+					}
+					return false;
+				}//End of Ground Block
+				else if(target.compareTo("platform") == 0){//If it hits anything else figure out bounce based of off angles, still needs a little work in some special case...
+					float targetx = (pTargetShape.getX()-pTargetShape.getWidth()/2);
+					float targety = (pTargetShape.getY()-pTargetShape.getHeight()/2);
+					float ballx = (ball.getX()-ball.getWidth()/2);
+					float bally = (ball.getY()-ball.getHeight()/2);
+					final Vector2 angleVector = new Vector2((ballx-targetx),(bally-targety));
+					double angle = Math.atan(angleVector.y/angleVector.x);
+					if(angle > 0.245 | angle < -0.245){
+						ball.xShift();
+					}
+					else{
+						ball.yShift();
+					}
+					return false;
+				}//End of platform block
+				else if(target.compareTo("brick") == 0){
+					float targetx = (pTargetShape.getX()-pTargetShape.getWidth()/2);
+					float targety = (pTargetShape.getY()-pTargetShape.getHeight()/2);
+					float ballx = (ball.getX()-ball.getWidth()/2);
+					float bally = (ball.getY()-ball.getHeight()/2);
+					final Vector2 angleVector = new Vector2((ballx-targetx),(bally-targety));
+					double angle = Math.atan(angleVector.y/angleVector.x);
+					if(angle > 0.464 | angle < -0.464){
+						ball.xShift();
+					}
+					else{
+						ball.yShift();
+					}
+					spawnPowerUp(pTargetShape.getX(), pTargetShape.getY());
+					this.runOnUpdateThread(new Runnable() {
+	                    @Override
+	                    public void run() {
+	                    	scene.getFirstChild().detachChild(pTargetShape);
+	                    	stuff.remove(pTargetShape);
+	                    	
+	                    }
+					});//End UpdateThread
+					//scene.getFirstChild().detachChild(brick);
+					Debug.d("Hit the birck!!");
+					return false;
+				}//End of Brick block
+			}//End of Ball Block
+			else if(check.compareTo("laser") == 0){//Laser Block
+				if(target.compareTo("brick") == 0){
+					spawnPowerUp(pTargetShape.getX(), pTargetShape.getY());
+					this.runOnUpdateThread(new Runnable() {
+	                    @Override
+	                    public void run() {
+	                    	scene.getFirstChild().detachChild(pTargetShape);
+	                    	stuff.remove(pTargetShape);
+	                    }
+					});//End UpdateThread
+					this.runOnUpdateThread(new Runnable() {
+	                    @Override
+	                    public void run() {
+	                    	scene.getFirstChild().detachChild(pCheckShape);
+	                    	stuff.remove(pCheckShape);
+	                    }
+					});//End UpdateThread
+				}//End Brick Block
+				else if(target.compareTo("roof") == 0){
+					this.runOnUpdateThread(new Runnable() {
+	                    @Override
+	                    public void run() {
+	                    	scene.getFirstChild().detachChild(pCheckShape);
+	                    	stuff.remove(pCheckShape);
+	                    }
+					});//End UpdateThread
+				}//End Roof Block
+				return false;
+			}//End of laser Block
+			else if(check.compareTo("platform")==0){//Platform Block
+				if(target.compareTo("laserUp")==0){
+					platform.turnOnLaser();
+					jewel1 = new Jewel(240, 240, mJewel, platform, "left");
+					jewel2 = new Jewel(240, 240, mJewel, platform, "right");
+					scene.getFirstChild().attachChild(jewel1);
+					scene.getFirstChild().attachChild(jewel2);
+					this.runOnUpdateThread(new Runnable() {
+	                    @Override
+	                    public void run() {
+	                    	scene.getFirstChild().detachChild(pTargetShape);
+	                    	powerUps.remove(pTargetShape);
+	                    }
+					});//End UpdateThread
+					return false;
+				}
+				else if(target.compareTo("lifeUp")==0){
+					lemon.increaseLives();
+					lives = lemon.getLives();
+					livesText.setText("Lives: "+lives);
+					this.runOnUpdateThread(new Runnable() {
+	                    @Override
+	                    public void run() {
+	                    	scene.getFirstChild().detachChild(pTargetShape);
+	                    	powerUps.remove(pTargetShape);
+	                    }
+					});//End UpdateThread
+					return false;
+				}
+				else if(target.compareTo("ballUp")==0){
+					if(ballCount < 2){
+						lemon2 = new Ball(240, PLATFORM_HEIGHT, this.mBall, lives, platform);
+			    		lemon2.setUserData(new String("lemon2"));
+			    		scene.getFirstChild().attachChild(lemon2);
+			    		GridRift.this.mEngine.registerUpdateHandler(new CollisionHandler(GridRift.this, lemon2, stuff));
+			    		ballCount ++;
+					}
+		    		this.runOnUpdateThread(new Runnable() {
+	                    @Override
+	                    public void run() {
+	                    	scene.getFirstChild().detachChild(pTargetShape);
+	                    	powerUps.remove(pTargetShape);
+	                    }
+					});//End UpdateThread
+		    		return false;
+				}
+			}//End of platform block
+			
+			return false;
 		}
 		
         // ===========================================================
