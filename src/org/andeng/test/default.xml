@@ -4,6 +4,50 @@
 			<x>120</x>
 			<y>120</y>
 		</brick>
+      <brick>
+			<x>0</x>
+			<y>120</y>
+		</brick>
+      <brick>
+			<x>30</x>
+			<y>120</y>
+		</brick>
+      <brick>
+			<x>60</x>
+			<y>120</y>
+		</brick>
+      <brick>
+			<x>90</x>
+			<y>120</y>
+		</brick>
+     <brick>
+			<x>120</x>
+			<y>150</y>
+		</brick>
+      <brick>
+			<x>120</x>
+			<y>60</y>
+		</brick>
+      <brick>
+			<x>120</x>
+			<y>30</y>
+		</brick>
+      		<brick>
+			<x>120</x>
+			<y>90</y>
+		</brick>
+     <brick>
+			<x>120</x>
+			<y>180</y>
+		</brick>
+      <brick>
+			<x>120</x>
+			<y>210</y>
+		</brick>
+      <brick>
+			<x>120</x>
+			<y>300</y>
+		</brick>
 		<brick>
 			<x>180</x>
 			<y>240</y>
