@@ -12,6 +12,8 @@ import org.anddev.andengine.engine.handler.timer.TimerHandler;
 import org.anddev.andengine.engine.options.EngineOptions;
 import org.anddev.andengine.engine.options.EngineOptions.ScreenOrientation;
 import org.anddev.andengine.engine.options.resolutionpolicy.RatioResolutionPolicy;
+import org.anddev.andengine.entity.modifier.RotationModifier;
+import org.anddev.andengine.entity.modifier.ScaleModifier;
 import org.anddev.andengine.entity.primitive.Rectangle;
 import org.anddev.andengine.entity.scene.Scene;
 import org.anddev.andengine.entity.scene.Scene.IOnSceneTouchListener;
@@ -19,6 +21,7 @@ import org.anddev.andengine.entity.shape.IShape;
 import org.anddev.andengine.entity.shape.Shape;
 import org.anddev.andengine.entity.sprite.Sprite;
 import org.anddev.andengine.entity.text.ChangeableText;
+import org.anddev.andengine.entity.text.Text;
 import org.anddev.andengine.entity.util.FPSLogger;
 import org.anddev.andengine.input.touch.TouchEvent;
 import org.anddev.andengine.opengl.font.Font;
@@ -30,6 +33,7 @@ import org.anddev.andengine.opengl.texture.region.TextureRegionFactory;
 import org.anddev.andengine.opengl.texture.region.TiledTextureRegion;
 import org.anddev.andengine.ui.activity.BaseGameActivity;
 import org.anddev.andengine.util.Debug;
+import org.anddev.andengine.util.HorizontalAlign;
 
 import android.graphics.Color;
 
@@ -57,6 +61,7 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
         private Texture mBackgroundTexture;
         private Texture fontTexture;
         private ChangeableText livesText;
+        private Text gameOverText;
         private Font font;
         private TextureRegion mPlatform;
         private TextureRegion mBall;
@@ -80,6 +85,7 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
         //private ArrayList<IShape> bricks;
         private ArrayList<IShape> powerUps;
         private Random rng;
+        private int numBricks;
 
         // ===========================================================
         // Constructors
@@ -108,7 +114,7 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
         	//Sprite
         	this.mTexture = new Texture(512,256);
         	this.mPlatform = TextureRegionFactory.createFromAsset(this.mTexture, this, "PlatformSmall.png",0,0);
-        	this.mBall = TextureRegionFactory.createFromAsset(this.mTexture, this, "Lemon (2).png",0,30);
+        	this.mBall = TextureRegionFactory.createFromAsset(this.mTexture, this, "GoodLemon.png",0,30);
         	this.mBrick = TextureRegionFactory.createFromAsset(this.mTexture, this, "Brick.png",0,50);
         	this.mLaser = TextureRegionFactory.createTiledFromAsset(this.mTexture, this, "LaserShotAni3.png",120,0,5,1);
         	this.mLifeUp = TextureRegionFactory.createFromAsset(this.mTexture, this, "Lifeup.png",0,80);
@@ -140,6 +146,7 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
         	powerUps = new ArrayList<IShape>();
         	lives = 3;
         	ballCount = 1;
+        	numBricks = 1;
         	
         	this.mEngine.registerUpdateHandler(new FPSLogger());
 
@@ -182,8 +189,8 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
     		lemon.setUserData(new String("lemon"));
     		scene.getFirstChild().attachChild(lemon);
     		
-    		//Setting up brick
-    		brick = new Sprite(240, 400, this.mBrick);
+    		//Setting up bricks
+    		brick = new Sprite(100, 100, this.mBrick);
     		brick.setUserData(new String("brick"));
     		scene.getFirstChild().attachChild(brick);
     		
@@ -228,6 +235,26 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
     			
     		}));
     		
+    		scene.registerUpdateHandler(new TimerHandler(5.0f, true, new ITimerCallback(){
+				@Override
+				public void onTimePassed(final TimerHandler pTimerHandler) {
+					if (numBricks < 15){
+						final Sprite brick1 = new Sprite(rng.nextInt(481), rng.nextInt(361), GridRift.this.mBrick);
+			    		brick1.setUserData(new String("brick"));
+			    		scene.getFirstChild().attachChild(brick1);
+			    		stuff.add(brick1);
+			    		numBricks++;
+					}
+				}
+    			
+    		}));
+    		
+    		//Game over text
+    		this.gameOverText = new Text(0, 0, this.font, "Game\nOver", HorizontalAlign.CENTER);
+    		this.gameOverText.setPosition((CAMERA_WIDTH - this.gameOverText.getWidth()) * 0.5f, (CAMERA_HEIGHT - this.gameOverText.getHeight()) * 0.5f);
+    		this.gameOverText.registerEntityModifier(new ScaleModifier(3, 0.1f, 2.0f));
+    		this.gameOverText.registerEntityModifier(new RotationModifier(3, 0, 720));
+    		
             return scene;    
         }
 
@@ -271,7 +298,6 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
 		
 		public void spawnPowerUp(float x, float y){
 			int type = rng.nextInt(3);
-			type = 1;
 			switch(type){
 				case 0:
 					final PowerUp life = new PowerUp(x, y, mLifeUp);
@@ -307,7 +333,6 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
 				final Ball ball = (Ball) pCheckShape;
 				if(target.compareTo("left") == 0 | target.compareTo("right") == 0){
 					ball.xShift();
-					
 					return false;
 				}//End of left and right block
 				else if(target.compareTo("roof") == 0){
@@ -315,9 +340,12 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
 					return false;
 				}//End of roof block
 				else if(target.compareTo("ground") == 0){ //Hit the ground ball stops
-					if(ballCount < 2){
+					if(lives < 0){ //Game over
+						scene.getFirstChild().attachChild(this.gameOverText);
+					}
+					else if(ballCount < 2){
 						ball.die();
-						lives = lemon.getLives();
+						lives--;
 						livesText.setText("Lives: "+lives);
 					}
 					else{
@@ -329,8 +357,6 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
 		                    	GridRift.this.mEngine.unregisterUpdateHandler(new CollisionHandler(GridRift.this, ball, stuff));
 		                    }
 						});//End UpdateThread
-					}
-					if(lives == 0){ //Game over
 					}
 					return false;
 				}//End of Ground Block
@@ -362,7 +388,9 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
 					else{
 						ball.yShift();
 					}
-					spawnPowerUp(pTargetShape.getX(), pTargetShape.getY());
+					if (rng.nextInt(101) < 10){
+						spawnPowerUp(pTargetShape.getX(), pTargetShape.getY());
+					}
 					this.runOnUpdateThread(new Runnable() {
 	                    @Override
 	                    public void run() {
@@ -371,14 +399,15 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
 	                    	
 	                    }
 					});//End UpdateThread
-					//scene.getFirstChild().detachChild(brick);
-					Debug.d("Hit the birck!!");
+					numBricks--;
 					return false;
 				}//End of Brick block
 			}//End of Ball Block
 			else if(check.compareTo("laser") == 0){//Laser Block
 				if(target.compareTo("brick") == 0){
-					spawnPowerUp(pTargetShape.getX(), pTargetShape.getY());
+					if (rng.nextInt(101) < 10){
+						spawnPowerUp(pTargetShape.getX(), pTargetShape.getY());
+					}
 					this.runOnUpdateThread(new Runnable() {
 	                    @Override
 	                    public void run() {
@@ -393,6 +422,7 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
 	                    	stuff.remove(pCheckShape);
 	                    }
 					});//End UpdateThread
+					numBricks--;
 				}//End Brick Block
 				else if(target.compareTo("roof") == 0){
 					this.runOnUpdateThread(new Runnable() {
@@ -422,8 +452,7 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
 					return false;
 				}
 				else if(target.compareTo("lifeUp")==0){
-					lemon.increaseLives();
-					lives = lemon.getLives();
+					lives++;
 					livesText.setText("Lives: "+lives);
 					this.runOnUpdateThread(new Runnable() {
 	                    @Override
@@ -436,7 +465,7 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
 				}
 				else if(target.compareTo("ballUp")==0){
 					if(ballCount < 2){
-						lemon2 = new Ball(240, PLATFORM_HEIGHT, this.mBall, lives, platform);
+						lemon2 = new Ball(240, PLATFORM_HEIGHT, this.mBall, 1, platform);
 			    		lemon2.setUserData(new String("lemon2"));
 			    		scene.getFirstChild().attachChild(lemon2);
 			    		GridRift.this.mEngine.registerUpdateHandler(new CollisionHandler(GridRift.this, lemon2, stuff));
@@ -461,4 +490,5 @@ public class GridRift extends BaseGameActivity implements IOnSceneTouchListener,
         // ===========================================================
 		
 }
+
 
