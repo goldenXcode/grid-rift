@@ -1,0 +1,17 @@
+<level lvl_name = "default.xml>
+	<list>
+		<brick>
+			<x>120</x>
+			<y>120</y>
+		</brick>
+		<brick>
+			<x>180</x>
+			<y>240</y>
+		</brick>
+		<brick>
+			<x>60</x>
+			<y>30</y>
+		</brick>
+
+	</list>
+</level>
