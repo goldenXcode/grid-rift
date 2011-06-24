@@ -11,3 +11,8 @@ Level lev = serializer.read(Level.class, source);
 The Level class should have a LinkedList inside so iterate through that and take the x and y Locations from teh glorified struct-class-thing Location.
 
 If it blows up somehow use the earlier version Level_n.java
+
+Btw, regarding the mock XML file, if you wanna make more coordinates just add 60 to the x and 30 to the y.
+Can't guarantee there won't be overlap what with manual editing and all.
+
+-Calvin
