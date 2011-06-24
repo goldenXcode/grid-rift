@@ -1,0 +1,13 @@
+Code snippets
+
+To Read the serialized file into Grid-Rift itself
+~~~~~~~~~~~
+Serializer serializer = new Persister();
+File source = new File("example.xml");
+
+Level lev = serializer.read(Level.class, source);
+~~~~~~~~~~~~~~
+
+The Level class should have a LinkedList inside so iterate through that and take the x and y Locations from teh glorified struct-class-thing Location.
+
+If it blows up somehow use the earlier version Level_n.java
